@@ -1,25 +1,55 @@
 FROM python:3.11-slim
 
+# ======================================
+# WORKDIR
+# ======================================
 WORKDIR /app
 
+# ======================================
+# PYTHON SETTINGS
+# ======================================
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+# ======================================
+# SYSTEM DEPENDENCIES
+# ======================================
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# ======================================
+# INSTALL PYTHON DEPENDENCIES
+# ======================================
 COPY requirements.txt .
 
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# ======================================
+# COPY PROJECT
+# ======================================
 COPY . .
 
+# ======================================
+# CREATE NON ROOT USER
+# ======================================
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+
+# ======================================
+# PORT
+# ======================================
 ENV PORT=8080
 
+# ======================================
+# HEALTHCHECK
+# ======================================
 HEALTHCHECK CMD curl --fail http://localhost:8080/health || exit 1
 
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8080", "--workers", "4", "--worker-connections", "1000", "--timeout", "60"]
+# ======================================
+# START SERVER
+# ======================================
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "60"]

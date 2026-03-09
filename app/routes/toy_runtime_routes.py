@@ -23,6 +23,8 @@ async def ask_question(
         db=db,
         toy=toy,
         question=data.question,
+        battery_level=data.battery_level,
+        wifi_signal=data.wifi_signal,
     )
 
 

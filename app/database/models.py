@@ -10,7 +10,7 @@ from sqlalchemy import (
     Float,
     Text,
     Index,
-    Date,   
+    Date,
     UniqueConstraint,
     Integer,
     Enum,
@@ -90,7 +90,11 @@ class Child(Base):
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
 
     parent = relationship("Parent", back_populates="children")
-    conversations = relationship("Conversation", back_populates="child")
+
+    conversations = relationship(
+        "Conversation",
+        back_populates="child"
+    )
 
     analytics = relationship(
         "ChildAnalytics",
@@ -151,12 +155,11 @@ class Toy(Base):
         index=True,
     )
 
-    # relationships
     owner = relationship(
         "Parent",
         back_populates="toys"
     )
-    
+
     active_child = relationship("Child")
 
     api_keys = relationship(
@@ -165,14 +168,12 @@ class Toy(Base):
         lazy="selectin"
     )
 
-    # lifecycle
     status = Column(Enum(ToyStatus), default=ToyStatus.PROVISIONED)
     is_active = Column(Boolean, default=True)
 
     claimed_at = Column(DateTime(timezone=True), nullable=True)
     last_seen = Column(DateTime(timezone=True), nullable=True)
 
-    # device metadata (NEW)
     manufactured_at = Column(DateTime(timezone=True), nullable=True)
 
     firmware_version = Column(String, nullable=True)
@@ -185,7 +186,6 @@ class Toy(Base):
 
     wifi_signal = Column(Integer, nullable=True)
 
-    # timestamps
     created_at = Column(
         DateTime(timezone=True),
         default=datetime.utcnow,
@@ -253,7 +253,10 @@ class Conversation(Base):
     started_at = Column(DateTime(timezone=True))
     last_activity = Column(DateTime(timezone=True))
 
-    child = relationship("Child", back_populates="conversations")
+    child = relationship(
+        "Child",
+        back_populates="conversations"
+    )
 
     messages = relationship(
         "Message",
@@ -284,12 +287,15 @@ class Message(Base):
         nullable=False,
     )
 
-    role = Column(String, nullable=False)
+    role = Column(String, nullable=False, index=True)
     content = Column(Text, nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
-    conversation = relationship("Conversation", back_populates="messages")
+    conversation = relationship(
+        "Conversation",
+        back_populates="messages"
+    )
 
 
 Index(
@@ -413,3 +419,50 @@ class AuditLog(Base):
     event_data = Column(JSONB)
 
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+# =========================
+# INTERACTION SETTINGS
+# =========================
+class InteractionSettings(Base):
+    __tablename__ = "interaction_settings"
+
+    id = UUID_PK()
+
+    child_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("children.id"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    smart_adapt_mode = Column(Boolean, default=True)
+    custom_tune = Column(Boolean, default=False)
+
+    word_complexity = Column(Integer, default=3)
+    speech_speed = Column(Integer, default=2)
+
+    new_words_per_session = Column(Integer, default=3)
+
+    question_frequency = Column(String, default="balanced")
+
+    topic_focus = Column(Integer, default=3)
+
+    command_steps = Column(Integer, default=2)
+
+    patience_level = Column(Integer, default=3)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        index=True,
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        onupdate=datetime.utcnow,
+    )
+
+    child = relationship("Child")
+

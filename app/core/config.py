@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     DATABASE_URL: str
 
     # ===============================
+    # OPENAI
+    # ===============================
+    OPENAI_API_KEY: str
+
+    # ===============================
     # FIREBASE
     # ===============================
     FIREBASE_CREDENTIALS_PATH: str | None = None
