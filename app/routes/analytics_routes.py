@@ -86,19 +86,50 @@ async def analytics_overview(
     }
 
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+
+from app.database.database import get_db
+from app.database.models import AnalyticsHistory
+
 # =====================================================
 # GQ DETAIL
 # =====================================================
-
 @router.get("/gq")
 async def gq_detail(
     data: dict = Depends(analytics_ready_guard),
+    db: AsyncSession = Depends(get_db),
 ):
 
     child = data["child"]
     analytics = data["analytics"]
 
     signals = (analytics.breakdown_json or {}).get("signals", {})
+
+    # -----------------------------
+    # FETCH HISTORY
+    # -----------------------------
+
+    result = await db.execute(
+        select(AnalyticsHistory)
+        .where(AnalyticsHistory.child_id == child.id)
+        .order_by(AnalyticsHistory.created_at.asc())
+    )
+
+    rows = result.scalars().all()
+
+    history = [
+        {
+            "date": r.created_at,
+            "gq": r.gq
+        }
+        for r in rows
+    ]
+
+    # -----------------------------
+    # RETURN UI
+    # -----------------------------
 
     return build_gq_ui(
         quotients={
@@ -110,8 +141,8 @@ async def gq_detail(
         },
         signals=signals,
         age=child.age,
+        history=history
     )
-
 
 # =====================================================
 # FQ DETAIL

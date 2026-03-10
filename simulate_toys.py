@@ -4,7 +4,7 @@ import random
 
 API_URL = "http://127.0.0.1:8000/api/v1/toy/runtime/ask"
 
-TOY_API_KEY = "T1gBB59hAt4ZymFhwFVqWdJ1COlVG38xv7gSGomv6Wk"
+TOY_API_KEY = ""
 
 
 questions = [

@@ -1,9 +1,10 @@
 # app/services/analytics_engine/presenter/gq_presenter.py
 
-def build_gq_ui(quotients, signals, age):
+def build_gq_ui(quotients, signals, age, history=None):
 
     quotients = quotients or {}
     signals = signals or {}
+    history = history or []
 
     fq = quotients.get("fq", 0)
     vq = quotients.get("vq", 0)
@@ -56,7 +57,7 @@ def build_gq_ui(quotients, signals, age):
         milestone_pacing = "Additional guided interaction recommended."
 
     # -------------------------------
-    # Velocity (REAL DB BASED)
+    # Velocity
     # -------------------------------
 
     previous_gq = signals.get("previous_gq")
@@ -84,7 +85,7 @@ def build_gq_ui(quotients, signals, age):
     }
 
     # -------------------------------
-    # Curiosity + Topics (NEW)
+    # Curiosity + Topics
     # -------------------------------
 
     curiosity_ratio = signals.get("curiosity_ratio", 0)
@@ -132,6 +133,8 @@ def build_gq_ui(quotients, signals, age):
 
         "velocity": velocity,
 
-        # NEW section
         "learning_profile": learning_profile,
+
+        # ⭐ NEW (graph data)
+        "history": history,
     }
