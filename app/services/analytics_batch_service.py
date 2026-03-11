@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, date
 
 from sqlalchemy import select, func
 
@@ -14,21 +14,22 @@ from app.database.models import (
 
 from app.services.analytics_engine.engine import generate_analytics
 from app.services.analytics_engine.velocity import classify_velocity
-from app.services.analytics_engine.constants import ROLLING_WINDOW_DAYS
 
 
 # =====================================================
 # PROCESS SINGLE CHILD
 # =====================================================
 
-async def process_child(child, window_start, now):
+async def process_child(child, now):
+
+    today = date.today()
 
     async with AsyncSessionLocal() as db:
 
         try:
 
             # ------------------------------------------
-            # Count messages
+            # Count today's messages
             # ------------------------------------------
             msg_result = await db.execute(
                 select(func.count(Message.id))
@@ -38,19 +39,19 @@ async def process_child(child, window_start, now):
                 )
                 .where(
                     Conversation.child_id == child.id,
-                    Message.created_at >= window_start,
+                    Conversation.conversation_date == today,
                 )
             )
 
             total_messages = msg_result.scalar() or 0
 
-            if total_messages < 5:
+            if total_messages < 10:
                 print(f"⚠️ Not enough messages for child {child.id}")
                 return
 
 
             # ------------------------------------------
-            # Fetch messages
+            # Fetch today's messages
             # ------------------------------------------
             messages_result = await db.execute(
                 select(Message)
@@ -60,7 +61,7 @@ async def process_child(child, window_start, now):
                 )
                 .where(
                     Conversation.child_id == child.id,
-                    Message.created_at >= window_start,
+                    Conversation.conversation_date == today,
                 )
                 .order_by(Message.created_at)
             )
@@ -115,7 +116,7 @@ async def process_child(child, window_start, now):
 
             trend_percent = 0.0
 
-            if previous_gq is not None:
+            if previous_gq is not None and previous_gq != 0:
                 trend_percent = round(
                     ((scores["gq"] - previous_gq) / previous_gq) * 100,
                     2,
@@ -151,10 +152,11 @@ async def process_child(child, window_start, now):
 
 
             # ------------------------------------------
-            # Save analytics history
+            # Save analytics history (daily snapshot)
             # ------------------------------------------
             history = AnalyticsHistory(
                 child_id=child.id,
+                analytics_date=date.today(),
                 fq=scores["fq"],
                 vq=scores["vq"],
                 cq=scores["cq"],
@@ -183,8 +185,6 @@ async def run_analytics_batch():
 
     now = datetime.utcnow()
 
-    window_start = now - timedelta(days=ROLLING_WINDOW_DAYS)
-
     async with AsyncSessionLocal() as db:
 
         result = await db.execute(
@@ -196,7 +196,7 @@ async def run_analytics_batch():
     print(f"🧠 Running analytics for {len(children)} children")
 
     tasks = [
-        process_child(child, window_start, now)
+        process_child(child, now)
         for child in children
     ]
 

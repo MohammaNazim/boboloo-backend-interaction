@@ -117,6 +117,11 @@ class ToyStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
     DISABLED = "DISABLED"
 
+# =========================
+# MESSAGE ROLE ENUM
+class MessageRole(str, enum.Enum):
+    user = "user"
+    assistant = "assistant"
 
 # =========================
 # TOY
@@ -287,7 +292,7 @@ class Message(Base):
         nullable=False,
     )
 
-    role = Column(String, nullable=False, index=True)
+    role = Column(Enum(MessageRole), nullable=False, index=True)
     content = Column(Text, nullable=False)
 
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
@@ -354,6 +359,14 @@ class ChildAnalytics(Base):
 class AnalyticsHistory(Base):
     __tablename__ = "analytics_history"
 
+    __table_args__ = (
+        UniqueConstraint(
+            "child_id",
+            "analytics_date",
+            name="uq_child_daily_analytics"
+        ),
+    )
+
     id = UUID_PK()
 
     child_id = Column(
@@ -362,6 +375,8 @@ class AnalyticsHistory(Base):
         nullable=False,
         index=True,
     )
+
+    analytics_date = Column(Date, index=True, nullable=False)
 
     fq = Column(Float)
     vq = Column(Float)

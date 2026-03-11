@@ -64,24 +64,22 @@ def build_gq_ui(quotients, signals, age, history=None):
 
     previous_growth_rate = None
     growth_rate = 0
+    label = "Stable Growth"
 
     if previous_gq is not None:
 
         growth_rate = round(gq - previous_gq, 2)
-
         previous_growth_rate = previous_gq
 
+        if growth_rate > 3:
+            label = "Learning Spurt"
+        elif growth_rate < -3:
+            label = "Temporary Dip"
+
     velocity = {
-
         "growth_rate": growth_rate,
-
         "previous_growth_rate": previous_growth_rate,
-
-        "label": (
-            "Learning Spurt"
-            if growth_rate > 3
-            else "Stable Growth"
-        ),
+        "label": label,
     }
 
     # -------------------------------
@@ -98,11 +96,8 @@ def build_gq_ui(quotients, signals, age, history=None):
         curiosity_level = "Emerging"
 
     learning_profile = {
-
         "curiosity_ratio": curiosity_ratio,
-
         "curiosity_level": curiosity_level,
-
         "top_topics": signals.get("top_topics", []),
     }
 
@@ -120,21 +115,12 @@ def build_gq_ui(quotients, signals, age, history=None):
     # -------------------------------
 
     return {
-
         "gq_score": gq,
-
         "whole_child_map": whole_child_map,
-
         "child_map_insight": insight,
-
         "development": development,
-
         "milestone_pacing": milestone_pacing,
-
         "velocity": velocity,
-
         "learning_profile": learning_profile,
-
-        # ⭐ NEW (graph data)
-        "history": history,
+        "history": history,  # graph data
     }

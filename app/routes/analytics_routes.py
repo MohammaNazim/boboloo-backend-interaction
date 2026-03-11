@@ -134,7 +134,6 @@ async def gq_detail(
             AnalyticsHistory.created_at >= start_date
         )
         .order_by(AnalyticsHistory.created_at.asc())
-        .limit(30)
     )
 
     rows = list(reversed(result.scalars().all()))
