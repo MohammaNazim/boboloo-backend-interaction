@@ -48,6 +48,7 @@ Rules:
             messages.extend(history)
 
         messages.append({"role": "user", "content": question})
+        logging.info(f"user message: {messages}")
 
         response = await client.chat.completions.create(
             model="gpt-4o-mini",
