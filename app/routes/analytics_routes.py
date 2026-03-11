@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Depends
+from datetime import datetime, timedelta
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.analytics_guard import analytics_ready_guard
+from app.database.database import get_db
+from app.database.models import AnalyticsHistory
 
 # Presenters
 from app.services.analytics_engine.presenter.gq_presenter import build_gq_ui
@@ -85,21 +91,15 @@ async def analytics_overview(
         "velocity": analytics.velocity,
     }
 
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends
-
-from app.database.database import get_db
-from app.database.models import AnalyticsHistory
-
 # =====================================================
 # GQ DETAIL
 # =====================================================
+
 @router.get("/gq")
 async def gq_detail(
     data: dict = Depends(analytics_ready_guard),
     db: AsyncSession = Depends(get_db),
+    period: str = "3weeks",
 ):
 
     child = data["child"]
@@ -107,42 +107,78 @@ async def gq_detail(
 
     signals = (analytics.breakdown_json or {}).get("signals", {})
 
-    # -----------------------------
-    # FETCH HISTORY
-    # -----------------------------
+    now = datetime.utcnow()
+
+    if period == "3days":
+        start_date = now - timedelta(days=3)
+
+    elif period == "week":
+        start_date = now - timedelta(days=7)
+
+    elif period == "2weeks":
+        start_date = now - timedelta(days=14)
+
+    elif period == "3weeks":
+        start_date = now - timedelta(days=21)
+
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+
+    else:
+        start_date = now - timedelta(days=21)
 
     result = await db.execute(
         select(AnalyticsHistory)
-        .where(AnalyticsHistory.child_id == child.id)
+        .where(
+            AnalyticsHistory.child_id == child.id,
+            AnalyticsHistory.created_at >= start_date
+        )
         .order_by(AnalyticsHistory.created_at.asc())
+        .limit(30)
     )
 
-    rows = result.scalars().all()
+    rows = list(reversed(result.scalars().all()))
+    
+    history = []
 
-    history = [
-        {
-            "date": r.created_at,
-            "gq": r.gq
+    for r in rows:
+
+        fq = r.fq
+        vq = r.vq
+        cq = r.cq
+        mq = r.mq
+
+        whole_child_map = {
+            "logic": round(mq, 1),
+            "language": round((fq + vq) / 2, 1),
+            "creativity": round(cq * 0.85, 1),
+            "empathy": round(cq * 0.65, 1),
+            "focus": round(mq * 1.05, 1),
         }
-        for r in rows
-    ]
 
-    # -----------------------------
-    # RETURN UI
-    # -----------------------------
+        history.append({
+            "date": r.created_at.isoformat(),
+            "whole_child_map": whole_child_map
+        })
 
-    return build_gq_ui(
+    response = build_gq_ui(
         quotients={
-            "fq": analytics.fq,
-            "vq": analytics.vq,
-            "cq": analytics.cq,
-            "mq": analytics.mq,
-            "gq": analytics.gq,
+            "fq": analytics.fq or 0,
+            "vq": analytics.vq or 0,
+            "cq": analytics.cq or 0,
+            "mq": analytics.mq or 0,
+            "gq": analytics.gq or 0 ,
         },
         signals=signals,
         age=child.age,
         history=history
     )
+
+    response["period"] = period
+
+    return response
+
+
 
 # =====================================================
 # FQ DETAIL

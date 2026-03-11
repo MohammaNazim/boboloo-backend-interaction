@@ -5,6 +5,12 @@ from app.routes.admin_routes import router as admin_router
 from app.core.app_logging import setup_logging
 from app.core.config import settings
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s"
+)
 
 setup_logging()
 
