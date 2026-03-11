@@ -192,7 +192,8 @@ async def fq_detail(
     analytics = data["analytics"]
 
     breakdown = analytics.breakdown_json or {}
-    signals = breakdown.get("signals", {})
+
+    signals = (breakdown.get("signals") or {})
 
     return build_fq_ui(
         {"fq": analytics.fq},
@@ -200,7 +201,6 @@ async def fq_detail(
         signals,
         child.age,
     )
-
 
 # =====================================================
 # VQ DETAIL

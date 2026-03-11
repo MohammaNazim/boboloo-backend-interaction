@@ -26,10 +26,10 @@ def generate_analytics(
     # Compute metric models
     # --------------------------------
 
-    fq_data = compute_fq(signals)
-    vq_data = compute_vq(signals)
-    cq_data = compute_cq(signals)
-    mq_data = compute_mq(signals)
+    fq_data = compute_fq(signals, age)
+    vq_data = compute_vq(signals, age)
+    cq_data = compute_cq(signals, age)
+    mq_data = compute_mq(signals, age)
 
     gq_data = compute_gq(
         fq_data["score"],
@@ -80,10 +80,27 @@ def generate_analytics(
         "turns": signals.get("turns", 0),
         "total_words": signals.get("total_words", 0),
         "unique_words": signals.get("unique_words", 0),
+
         "avg_turn_length": signals.get("avg_turn_length", 0),
+        "sentence_variance": signals.get("sentence_variance", 0),
+
+        # curiosity
         "curiosity_ratio": signals.get("curiosity_ratio", 0),
+
+        # fluency signals
+        "ttr": signals.get("ttr", 0),
+        "disfluency_score": signals.get("disfluency_score", 0),
+        "long_turn_ratio": signals.get("long_turn_ratio", 0),
+
+        # topics
         "top_topics": signals.get("top_topics", []),
     }
+
+    # --------------------------------
+    # Attach signals for presenters
+    # --------------------------------
+
+    breakdown["signals"] = signal_summary
 
     # --------------------------------
     # Final response

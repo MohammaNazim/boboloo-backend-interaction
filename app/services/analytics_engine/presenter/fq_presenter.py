@@ -1,90 +1,147 @@
 def build_fq_ui(quotients, breakdown, signals, age):
 
+    quotients = quotients or {}
+    breakdown = breakdown or {}
+    signals = signals or {}
+
     fq = quotients.get("fq", 0)
 
     turns = signals.get("turns", 0)
-    words = signals.get("total_words", 0)
-    unique_words = signals.get("unique_words", 0)
+    total_words = signals.get("total_words", 0)
+
+    ttr = signals.get("ttr", 0)
+    variance = signals.get("sentence_variance", 0)
+    disfluency = signals.get("disfluency_score", 0)
+    long_turn_ratio = signals.get("long_turn_ratio", 0)
+
     avg_turn = signals.get("avg_turn_length", 0)
 
-    # ------------------------------------------------
-    # Articulatory Clarity (estimated from vocabulary)
-    # ------------------------------------------------
-
-    if unique_words > 40:
-        clear_sounds = list("ABCDEFGHIJKLM")
-        developing_sounds = list("NOPQR")
-    elif unique_words > 20:
-        clear_sounds = list("ABCDEFGHI")
-        developing_sounds = list("OPQR")
-    else:
-        clear_sounds = list("ABCDE")
-        developing_sounds = list("FGHIJ")
-
-    not_attempted = ["X", "Z"]
-
-    articulatory = {
-        "clear_sounds": clear_sounds,
-        "developing_sounds": developing_sounds,
-        "not_attempted": not_attempted,
-        "note": f"The 'R' sound is developmentally normal to master around age {age}."
-    }
-
-    # ------------------------------------------------
-    # Prosody & Tone (variation in conversation)
-    # ------------------------------------------------
-
-    variation_score = min(100, int((avg_turn * 12) + (turns * 0.5)))
-    
-    if variation_score > 60:
-        prosody_label = "Your child speaks with high emotional variation — they are not robotic."
-    else:
-        prosody_label = "Speech tone still developing."
-
-    prosody = {
-        "variation_score": variation_score,
-        "label": prosody_label
-    }
-
-    # ------------------------------------------------
-    # Pace Consistency
-    # ------------------------------------------------
+    # -----------------------------------------
+    # Speech Density (words per turn)
+    # -----------------------------------------
 
     if turns == 0:
-        wpm = 0
+        speech_density = 0
     else:
-        wpm = int((words / turns) * 30)
+        speech_density = round(total_words / turns, 1)
 
-    if wpm < 80:
-        zone = "Slow"
-    elif wpm < 130:
-        zone = "Relaxed"
+    # -----------------------------------------
+    # Fluency Interpretation
+    # -----------------------------------------
+
+    if fq >= 70:
+        fluency_level = "Advanced conversational fluency detected."
+    elif fq >= 55:
+        fluency_level = "Healthy fluency development."
+    elif fq >= 40:
+        fluency_level = "Fluency emerging with interaction."
     else:
-        zone = "Fast"
+        fluency_level = "Encourage more conversational practice."
 
-    pace = {
-        "words_per_minute": wpm,
-        "zone": zone,
-        "insight": "Balanced speaking rhythm detected."
+    # -----------------------------------------
+    # Vocabulary richness insight
+    # -----------------------------------------
+
+    if ttr > 0.45:
+        vocab_label = "Rich vocabulary diversity."
+    elif ttr > 0.30:
+        vocab_label = "Balanced vocabulary usage."
+    else:
+        vocab_label = "Vocabulary range still expanding."
+
+    vocabulary = {
+        "type_token_ratio": round(ttr, 2),
+        "insight": vocab_label,
     }
 
-    # ------------------------------------------------
-    # Weekly Action Recommendation
-    # ------------------------------------------------
+    # -----------------------------------------
+    # Prosody / Rhythm
+    # -----------------------------------------
 
-    if unique_words > 40:
-        weekly_action = "Encourage storytelling and creative conversations."
-    elif unique_words > 20:
-        weekly_action = "Ask open-ended questions to expand vocabulary."
+    if variance > 5:
+        prosody_label = "Dynamic sentence rhythm."
+    elif variance > 2:
+        prosody_label = "Moderate sentence variation."
     else:
-        weekly_action = "Encourage simple storytelling and descriptive speech."
+        prosody_label = "Speech rhythm still developing."
 
-    # ------------------------------------------------
+    prosody = {
+        "variation_score": round(variance, 2),
+        "label": prosody_label,
+    }
+
+    # -----------------------------------------
+    # Expressive Speech
+    # -----------------------------------------
+
+    expressive = {
+        "long_turn_ratio": round(long_turn_ratio, 2),
+        "interpretation": (
+            "Child frequently produces longer expressive sentences."
+            if long_turn_ratio > 0.4
+            else "Conversation dominated by shorter responses."
+        ),
+    }
+
+    # -----------------------------------------
+    # Disfluency detection
+    # -----------------------------------------
+
+    disfluency_block = {
+        "disfluency_score": round(disfluency, 3),
+        "interpretation": (
+            "Minimal hesitation detected."
+            if disfluency < 0.05
+            else "Some conversational hesitation observed."
+        ),
+    }
+
+    # -----------------------------------------
+    # Pace / Density
+    # -----------------------------------------
+
+    if speech_density < 4:
+        pace_zone = "Short replies"
+    elif speech_density < 9:
+        pace_zone = "Balanced conversation"
+    else:
+        pace_zone = "Highly expressive dialogue"
+
+    pace = {
+        "words_per_turn": speech_density,
+        "zone": pace_zone,
+    }
+
+    # -----------------------------------------
+    # Weekly action
+    # -----------------------------------------
+
+    if long_turn_ratio > 0.4:
+        weekly_action = "Encourage storytelling and imaginative conversations."
+    elif ttr > 0.35:
+        weekly_action = "Ask open-ended questions to expand conversation."
+    else:
+        weekly_action = "Encourage descriptive responses and longer sentences."
+
+    # -----------------------------------------
+    # Final response
+    # -----------------------------------------
 
     return {
+
         "fq_score": fq,
-        "articulatory_clarity": articulatory,
+
+        "fluency_level": fluency_level,
+
+        "vocabulary": vocabulary,
+
         "prosody": prosody,
-        "pace_consistency": pace,
-        "weekly_action": weekly_action
+
+        "expressive_speech": expressive,
+
+        "disfluency": disfluency_block,
+
+        "conversation_pace": pace,
+
+        "weekly_action": weekly_action,
     }

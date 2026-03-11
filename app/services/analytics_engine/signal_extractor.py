@@ -5,6 +5,11 @@ from collections import Counter
 QUESTION_PATTERNS = {"why", "how", "what", "where"}
 SEQUENCE_WORDS = {"then", "after", "because", "and"}
 
+FILLER_WORDS = {
+    "um", "uh", "hmm", "like", "erm", "ah", "okay","so", "well", "you know","ok","huh", "mm", "huh", "er", "ahh", "hmmm", "uhh", "ummm",
+    "huh", "ermm", "ahhh", "hmmmm", "uhhh", "ummmm"
+}
+
 # Topic keywords
 TOPIC_MAP = {
     "science": {"why", "how", "sky", "rain", "sun", "bird"},
@@ -40,7 +45,13 @@ def extract_signals(messages):
     unique_words = len(set(words))
 
     # --------------------------------------------------
-    # Curiosity detection (token based)
+    # Lexical Diversity
+    # --------------------------------------------------
+
+    ttr = unique_words / max(total_words, 1)
+
+    # --------------------------------------------------
+    # Curiosity detection
     # --------------------------------------------------
 
     curiosity = 0
@@ -75,16 +86,84 @@ def extract_signals(messages):
     novelty_ratio = new_words / max(unique_words, 1)
 
     # --------------------------------------------------
-    # Average message length
+    # Repetition detection (disfluency)
     # --------------------------------------------------
+
+    repeated_words = sum(
+        c for c in word_freq.values() if c > 2
+    )
+
+    repetition_rate = repeated_words / max(total_words, 1)
+
+    # --------------------------------------------------
+    # Filler detection (disfluency)
+    # --------------------------------------------------
+
+    filler_count = sum(
+        1 for w in words if w in FILLER_WORDS
+    )
+
+    filler_ratio = filler_count / max(total_words, 1)
+
+    # --------------------------------------------------
+    # Combined disfluency signal
+    # --------------------------------------------------
+
+    disfluency_score = repetition_rate + filler_ratio
+
+    # --------------------------------------------------
+    # Sentence lengths
+    # --------------------------------------------------
+
+    sentence_lengths = [
+        len(msg.split()) for msg in user_msgs
+    ]
 
     if turns == 0:
+
         avg_turn_length = 0
+        avg_sentence_length = 0
+        sentence_variance = 0
+
     else:
+
         avg_turn_length = total_words / turns
+        avg_sentence_length = avg_turn_length
+
+        mean_len = avg_turn_length
+
+        sentence_variance = sum(
+            (l - mean_len) ** 2 for l in sentence_lengths
+        ) / max(turns, 1)
 
     # --------------------------------------------------
-    # Topic detection (faster)
+    # Long turn ratio (expressive speech)
+    # --------------------------------------------------
+
+    long_turns = sum(
+        1 for l in sentence_lengths if l >= 8
+    )
+
+    long_turn_ratio = long_turns / max(turns, 1)
+
+    # --------------------------------------------------
+    # Topic coherence detection (NEW SIGNAL)
+    # --------------------------------------------------
+
+    topic_switches = 0
+
+    for i in range(1, len(user_msgs)):
+
+        prev_words = set(user_msgs[i-1].split())
+        curr_words = set(user_msgs[i].split())
+
+        if len(prev_words.intersection(curr_words)) == 0:
+            topic_switches += 1
+
+    topic_consistency = 1 - (topic_switches / max(turns - 1, 1))
+
+    # --------------------------------------------------
+    # Topic detection
     # --------------------------------------------------
 
     word_set = set(words)
@@ -144,6 +223,8 @@ def extract_signals(messages):
 
         "unique_words": unique_words,
 
+        "ttr": round(ttr, 3),
+
         "curiosity": curiosity,
 
         "curiosity_ratio": round(curiosity_ratio, 2),
@@ -152,7 +233,21 @@ def extract_signals(messages):
 
         "novelty_ratio": novelty_ratio,
 
+        "repetition_rate": round(repetition_rate, 3),
+
+        "filler_ratio": round(filler_ratio, 3),
+
+        "disfluency_score": round(disfluency_score, 3),
+
         "avg_turn_length": avg_turn_length,
+
+        "avg_sentence_length": avg_sentence_length,
+
+        "sentence_variance": round(sentence_variance, 2),
+
+        "long_turn_ratio": round(long_turn_ratio, 2),
+
+        "topic_consistency": round(topic_consistency, 2),
 
         "turns": turns,
 
