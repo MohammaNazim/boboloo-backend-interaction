@@ -213,12 +213,14 @@ async def vq_detail(
 
     analytics = data["analytics"]
 
-    breakdown = analytics.breakdown_json or {}
-    signals = breakdown.get("signals", {})
+    data_json = analytics.breakdown_json or {}
+
+    breakdown = data_json.get("breakdown", {})
+    signals = data_json.get("signals", {})
 
     return build_vq_ui(
         {"vq": analytics.vq},
-        breakdown,
+        breakdown.get("vq", {}),
         signals,
     )
 

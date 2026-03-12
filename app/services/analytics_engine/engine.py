@@ -101,6 +101,8 @@ def generate_analytics(
 
         # topics
         "top_topics": signals.get("top_topics", []),
+
+        "content_words_list": signals.get("content_words_list", []),
     }
 
     # --------------------------------
