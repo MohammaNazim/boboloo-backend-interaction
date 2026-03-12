@@ -5,7 +5,7 @@ def clamp(value):
     return max(MIN_SCORE, min(MAX_SCORE, round(value, 1)))
 
 
-def compute_vq(signals):
+def compute_vq(signals, age):
 
     # --------------------------------
     # Extract signals safely

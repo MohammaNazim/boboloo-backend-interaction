@@ -260,17 +260,28 @@ async def process_child(child, now):
             # Save analytics history
             # ------------------------------------------
 
-            history = AnalyticsHistory(
-                child_id=child.id,
-                analytics_date=today,
-                fq=scores["fq"],
-                vq=scores["vq"],
-                cq=scores["cq"],
-                mq=scores["mq"],
-                gq=scores["gq"],
+            existing = await db.execute(
+                select(AnalyticsHistory).where(
+                    AnalyticsHistory.child_id == child.id,
+                    AnalyticsHistory.analytics_date == today
+                )
             )
 
-            db.add(history)
+            existing_row = existing.scalars().first()
+
+            if not existing_row:
+
+                history = AnalyticsHistory(
+                    child_id=child.id,
+                    analytics_date=today,
+                    fq=scores["fq"],
+                    vq=scores["vq"],
+                    cq=scores["cq"],
+                    mq=scores["mq"],
+                    gq=scores["gq"],
+                )
+
+                db.add(history)
 
             await db.commit()
 
