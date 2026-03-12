@@ -57,7 +57,7 @@ def build_gq_ui(quotients, signals, age, history=None, previous_gq=None):
         milestone_pacing = "Additional guided interaction recommended."
 
     # -------------------------------
-    # Velocity (FIXED)
+    # Velocity (algorithm unchanged)
     # -------------------------------
 
     previous_growth_rate = previous_gq
@@ -74,10 +74,64 @@ def build_gq_ui(quotients, signals, age, history=None, previous_gq=None):
         elif growth_rate < -3:
             label = "Temporary Dip"
 
+    # -------------------------------
+    # Percent change (UI helper)
+    # -------------------------------
+
+    percent_change = 0
+
+    if previous_gq is not None and previous_gq != 0:
+        percent_change = round((growth_rate / previous_gq) * 100, 1)
+
+    # -------------------------------
+    # Graph comparison text
+    # -------------------------------
+
+    comparison_text = "Building baseline data"
+
+    if previous_gq is not None:
+        comparison_text = f"{percent_change}% vs Yesterday"
+
+    # -------------------------------
+    # Parent progress insight
+    # -------------------------------
+
+    if label == "Learning Spurt":
+        progress_text = "Your child showed a burst of learning today."
+
+    elif label == "Temporary Dip":
+        progress_text = "Learning activity dipped slightly today."
+
+    else:
+        progress_text = "Your child continues learning at a steady pace."
+
+    # -------------------------------
+    # Context insight from signals
+    # -------------------------------
+
+    unique_words = signals.get("unique_words", 0)
+    turns = signals.get("turns", 0)
+
+    context_text = "Your child stayed engaged in conversation."
+
+    if unique_words > 40:
+        context_text = "Your child used many new words today."
+
+    elif turns > 20:
+        context_text = "Your child had an active conversation today."
+
+    # -------------------------------
+    # Velocity object
+    # -------------------------------
+
     velocity = {
         "growth_rate": growth_rate,
         "previous_growth_rate": previous_growth_rate,
+        "percent_change": percent_change,
+        "comparison_text": comparison_text,
         "label": label,
+        "progress_text": progress_text,
+        "context_text": context_text,
     }
 
     # -------------------------------
