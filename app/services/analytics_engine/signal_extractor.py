@@ -1,11 +1,28 @@
 import re
 from collections import Counter
+from wordfreq import zipf_frequency
 
+
+# --------------------------------
+# Core language patterns
+# --------------------------------
 
 QUESTION_PATTERNS = {"why", "how", "what", "where"}
-SEQUENCE_WORDS = {"then", "after", "because", "and"}
+SEQUENCE_WORDS = {"then", "after", "because"}
 
-# filler words indicating hesitation
+# --------------------------------
+# Stop words
+# --------------------------------
+
+STOP_WORDS = {
+    "the", "is", "a", "to", "of", "in", "it", "that",
+    "this", "on", "for", "with", "as", "was", "are"
+}
+
+# --------------------------------
+# Filler words
+# --------------------------------
+
 FILLER_WORDS = {
     "um", "uh", "hmm", "like", "erm", "ah", "okay",
     "so", "well", "you", "know", "ok",
@@ -13,7 +30,10 @@ FILLER_WORDS = {
     "uhh", "umm", "uhhh", "ummm"
 }
 
+# --------------------------------
 # Topic keywords
+# --------------------------------
+
 TOPIC_MAP = {
     "science": {"why", "how", "sky", "rain", "sun", "bird"},
     "story": {"story", "tale", "character", "dragon"},
@@ -25,14 +45,40 @@ VERB_WORDS = {"run", "eat", "go", "play", "jump", "come", "take", "give"}
 SOCIAL_WORDS = {"please", "bye", "hello", "thanks", "sorry"}
 
 
+# =====================================================
+# ZIPF DIFFICULTY CALCULATION
+# =====================================================
+
+def compute_zipf_difficulty(words):
+
+    if not words:
+        return 0
+
+    scores = []
+
+    for w in words:
+
+        try:
+            zipf = zipf_frequency(w, "en")
+            difficulty = 7 - zipf
+            scores.append(difficulty)
+        except:
+            continue
+
+    if not scores:
+        return 0
+
+    return sum(scores) / len(scores)
+
+
+# =====================================================
+# SIGNAL EXTRACTION
+# =====================================================
+
 def extract_signals(messages):
 
-    # --------------------------------
-    # Extract user messages
-    # --------------------------------
-
     user_msgs = [
-        m["content"].lower()
+        m.get("content", "").lower()
         for m in messages
         if m.get("role", "").lower() == "user"
     ]
@@ -41,16 +87,57 @@ def extract_signals(messages):
 
     text = " ".join(user_msgs)
 
-    words = re.findall(r"\b\w+\b", text)
+    words = re.findall(r"\b[a-z]+\b", text)
 
     total_words = len(words)
-    unique_words = len(set(words))
 
     # --------------------------------
-    # Lexical Diversity
+    # Content words
     # --------------------------------
 
-    ttr = unique_words / max(total_words, 1)
+    content_words = [w for w in words if w not in STOP_WORDS]
+
+    content_word_count = len(content_words)
+
+    unique_words = len(set(content_words))
+
+    # --------------------------------
+    # Lexical diversity
+    # --------------------------------
+
+    ttr = unique_words / max(content_word_count, 1)
+
+    # --------------------------------
+    # Word frequency
+    # --------------------------------
+
+    word_freq = Counter(content_words)
+
+    # --------------------------------
+    # Vocabulary novelty
+    # --------------------------------
+
+    new_words = len([w for w, c in word_freq.items() if c == 1])
+
+    novelty_ratio = new_words / max(unique_words, 1)
+
+    # --------------------------------
+    # Repetition detection
+    # --------------------------------
+
+    repeated_tokens = sum((c - 1) for c in word_freq.values() if c > 1)
+
+    repetition_rate = repeated_tokens / max(content_word_count, 1)
+
+    # --------------------------------
+    # Filler detection
+    # --------------------------------
+
+    filler_count = sum(1 for w in words if w in FILLER_WORDS)
+
+    filler_ratio = filler_count / max(total_words, 1)
+
+    disfluency_score = repetition_rate + filler_ratio
 
     # --------------------------------
     # Curiosity detection
@@ -74,57 +161,18 @@ def extract_signals(messages):
     sequencing = sum(1 for w in words if w in SEQUENCE_WORDS)
 
     # --------------------------------
-    # Vocabulary novelty
-    # --------------------------------
-
-    word_freq = Counter(words)
-
-    new_words = len([w for w, c in word_freq.items() if c == 1])
-
-    novelty_ratio = new_words / max(unique_words, 1)
-
-    # --------------------------------
-    # Repetition detection
-    # --------------------------------
-
-    repeated_words = sum(c for c in word_freq.values() if c > 2)
-
-    repetition_rate = repeated_words / max(total_words, 1)
-
-    # --------------------------------
-    # Filler detection
-    # --------------------------------
-
-    filler_count = sum(1 for w in words if w in FILLER_WORDS)
-
-    filler_ratio = filler_count / max(total_words, 1)
-
-    # --------------------------------
-    # Combined disfluency signal
-    # --------------------------------
-
-    disfluency_score = repetition_rate + filler_ratio
-
-    # --------------------------------
-    # Sentence lengths
+    # Sentence statistics
     # --------------------------------
 
     sentence_lengths = [len(msg.split()) for msg in user_msgs]
 
-    if turns == 0:
+    avg_turn_length = total_words / max(turns, 1)
 
-        avg_turn_length = 0
-        sentence_variance = 0
+    mean_len = avg_turn_length
 
-    else:
-
-        avg_turn_length = total_words / turns
-
-        mean_len = avg_turn_length
-
-        sentence_variance = sum(
-            (l - mean_len) ** 2 for l in sentence_lengths
-        ) / max(turns, 1)
+    sentence_variance = sum(
+        (l - mean_len) ** 2 for l in sentence_lengths
+    ) / max(turns, 1)
 
     # --------------------------------
     # Long expressive turns
@@ -154,7 +202,7 @@ def extract_signals(messages):
     # Topic detection
     # --------------------------------
 
-    word_set = set(words)
+    word_set = set(content_words)
 
     topic_scores = {}
 
@@ -189,11 +237,22 @@ def extract_signals(messages):
     category_distribution = {
 
         "noun": round((noun_count / max(total_words, 1)) * 100, 1),
-
         "verb": round((verb_count / max(total_words, 1)) * 100, 1),
-
         "social": round((social_count / max(total_words, 1)) * 100, 1),
+
     }
+
+    # --------------------------------
+    # Zipf difficulty
+    # --------------------------------
+
+    difficulty_score = compute_zipf_difficulty(content_words)
+
+    # --------------------------------
+    # Conversation confidence
+    # --------------------------------
+
+    confidence = min(1.0, total_words / 50)
 
     # --------------------------------
     # Final signals
@@ -202,31 +261,29 @@ def extract_signals(messages):
     return {
 
         "total_words": total_words,
-
+        "content_word_count": content_word_count,
         "unique_words": unique_words,
 
         "ttr": round(ttr, 3),
+        "difficulty_score": round(difficulty_score, 3),
+
+        "confidence": round(confidence, 2),
 
         "curiosity": curiosity,
-
         "curiosity_ratio": round(curiosity_ratio, 2),
 
         "sequencing": sequencing,
 
         "novelty_ratio": round(novelty_ratio, 3),
-
         "repetition_rate": round(repetition_rate, 3),
 
         "filler_ratio": round(filler_ratio, 3),
-
         "disfluency_score": round(disfluency_score, 3),
 
         "avg_turn_length": round(avg_turn_length, 2),
-
         "sentence_variance": round(sentence_variance, 2),
 
         "long_turn_ratio": round(long_turn_ratio, 2),
-
         "topic_consistency": round(topic_consistency, 2),
 
         "turns": turns,
@@ -234,4 +291,7 @@ def extract_signals(messages):
         "top_topics": top_topics,
 
         "category_distribution": category_distribution,
+
+        # IMPORTANT FOR VOCAB MEMORY
+        "content_words_list": content_words,
     }

@@ -10,10 +10,81 @@ from app.database.models import (
     Message,
     ChildAnalytics,
     AnalyticsHistory,
+    ChildVocabularyMemory,
 )
 
 from app.services.analytics_engine.engine import generate_analytics
 from app.services.analytics_engine.velocity import classify_velocity
+
+
+# =====================================================
+# UPDATE VOCABULARY MEMORY
+# =====================================================
+
+async def update_vocabulary_memory(db, child_id, words):
+
+    today = date.today()
+
+    unique_words = set(words)
+
+    for word in unique_words:
+
+        result = await db.execute(
+            select(ChildVocabularyMemory).where(
+                ChildVocabularyMemory.child_id == child_id,
+                ChildVocabularyMemory.word == word,
+            )
+        )
+
+        record = result.scalars().first()
+
+        if record:
+
+            record.last_seen = today
+            record.usage_count += 1
+
+        else:
+
+            db.add(
+                ChildVocabularyMemory(
+                    child_id=child_id,
+                    word=word,
+                    first_seen=today,
+                    last_seen=today,
+                    usage_count=1,
+                )
+            )
+
+
+# =====================================================
+# REAL NOVELTY CALCULATION (NEW)
+# =====================================================
+
+async def compute_real_novelty(db, child_id):
+
+    today = date.today()
+
+    result = await db.execute(
+        select(ChildVocabularyMemory).where(
+            ChildVocabularyMemory.child_id == child_id
+        )
+    )
+
+    records = result.scalars().all()
+
+    new_words = 0
+    reused_words = 0
+
+    for r in records:
+
+        if r.first_seen == today:
+
+            new_words += 1
+
+            if r.usage_count > 1:
+                reused_words += 1
+
+    return new_words, reused_words
 
 
 # =====================================================
@@ -31,6 +102,7 @@ async def process_child(child, now):
             # ------------------------------------------
             # Count today's messages
             # ------------------------------------------
+
             msg_result = await db.execute(
                 select(func.count(Message.id))
                 .join(
@@ -49,10 +121,10 @@ async def process_child(child, now):
                 print(f"⚠️ Not enough messages for child {child.id}")
                 return
 
-
             # ------------------------------------------
             # Fetch today's messages
             # ------------------------------------------
+
             messages_result = await db.execute(
                 select(Message)
                 .join(
@@ -73,10 +145,10 @@ async def process_child(child, now):
                 for m in raw_messages
             ]
 
-
             # ------------------------------------------
             # Previous analytics
             # ------------------------------------------
+
             prev_result = await db.execute(
                 select(ChildAnalytics).where(
                     ChildAnalytics.child_id == child.id
@@ -89,6 +161,7 @@ async def process_child(child, now):
             previous_gq = None
 
             if analytics:
+
                 previous_scores = {
                     "fq": analytics.fq,
                     "vq": analytics.vq,
@@ -96,12 +169,13 @@ async def process_child(child, now):
                     "mq": analytics.mq,
                     "gq": analytics.gq,
                 }
-                previous_gq = analytics.gq
 
+                previous_gq = analytics.gq
 
             # ------------------------------------------
             # Run analytics engine
             # ------------------------------------------
+
             result = generate_analytics(
                 messages=formatted_messages,
                 age=child.age,
@@ -114,9 +188,41 @@ async def process_child(child, now):
             breakdown = result["breakdown"]
             confidence = result["confidence"]
 
+            # ------------------------------------------
+            # Update Vocabulary Memory
+            # ------------------------------------------
+
+            signals = result.get("signals", {})
+            content_words = signals.get("content_words_list", [])
+
+            if content_words:
+
+                await update_vocabulary_memory(
+                    db,
+                    child.id,
+                    content_words,
+                )
+
+            # ------------------------------------------
+            # REAL NOVELTY RETENTION (NEW)
+            # ------------------------------------------
+
+            new_words, reused_words = await compute_real_novelty(
+                db,
+                child.id,
+            )
+
+            breakdown["new_words_introduced"] = new_words
+            breakdown["new_words_reused"] = reused_words
+
+            # ------------------------------------------
+            # Compute trend
+            # ------------------------------------------
+
             trend_percent = 0.0
 
             if previous_gq is not None and previous_gq != 0:
+
                 trend_percent = round(
                     ((scores["gq"] - previous_gq) / previous_gq) * 100,
                     2,
@@ -124,10 +230,10 @@ async def process_child(child, now):
 
             velocity = classify_velocity(previous_gq, scores["gq"])
 
-
             # ------------------------------------------
             # Create analytics row if not exists
             # ------------------------------------------
+
             if not analytics:
                 analytics = ChildAnalytics(child_id=child.id)
                 db.add(analytics)
@@ -150,13 +256,13 @@ async def process_child(child, now):
             analytics.algorithm_version = result["algorithm_version"]
             analytics.updated_at = now
 
+            # ------------------------------------------
+            # Save analytics history
+            # ------------------------------------------
 
-            # ------------------------------------------
-            # Save analytics history (daily snapshot)
-            # ------------------------------------------
             history = AnalyticsHistory(
                 child_id=child.id,
-                analytics_date=date.today(),
+                analytics_date=today,
                 fq=scores["fq"],
                 vq=scores["vq"],
                 cq=scores["cq"],

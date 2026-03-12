@@ -481,3 +481,54 @@ class InteractionSettings(Base):
 
     child = relationship("Child")
 
+# =========================
+# CHILD VOCABULARY MEMORY
+# =========================
+class ChildVocabularyMemory(Base):
+    __tablename__ = "child_vocabulary_memory"
+
+    id = UUID_PK()
+
+    child_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("children.id"),
+        nullable=False,
+        index=True,
+    )
+
+    word = Column(String, nullable=False, index=True)
+
+    first_seen = Column(
+        Date,
+        nullable=False,
+        index=True,
+    )
+
+    last_seen = Column(
+        Date,
+        nullable=False,
+        index=True,
+    )
+
+    usage_count = Column(
+        Integer,
+        default=1,
+        nullable=False,
+    )
+
+    child = relationship("Child")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "child_id",
+            "word",
+            name="uq_child_word_memory",
+        ),
+    )
+
+
+Index(
+    "idx_child_vocab_child_word",
+    ChildVocabularyMemory.child_id,
+    ChildVocabularyMemory.word,
+)
