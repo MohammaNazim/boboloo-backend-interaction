@@ -5,9 +5,12 @@ from collections import Counter
 QUESTION_PATTERNS = {"why", "how", "what", "where"}
 SEQUENCE_WORDS = {"then", "after", "because", "and"}
 
+# filler words indicating hesitation
 FILLER_WORDS = {
-    "um", "uh", "hmm", "like", "erm", "ah", "okay","so", "well", "you know","ok","huh", "mm", "huh", "er", "ahh", "hmmm", "uhh", "ummm",
-    "huh", "ermm", "ahhh", "hmmmm", "uhhh", "ummmm"
+    "um", "uh", "hmm", "like", "erm", "ah", "okay",
+    "so", "well", "you", "know", "ok",
+    "huh", "mm", "er", "ahh", "hmmm",
+    "uhh", "umm", "uhhh", "ummm"
 }
 
 # Topic keywords
@@ -24,9 +27,9 @@ SOCIAL_WORDS = {"please", "bye", "hello", "thanks", "sorry"}
 
 def extract_signals(messages):
 
-    # --------------------------------------------------
+    # --------------------------------
     # Extract user messages
-    # --------------------------------------------------
+    # --------------------------------
 
     user_msgs = [
         m["content"].lower()
@@ -41,18 +44,17 @@ def extract_signals(messages):
     words = re.findall(r"\b\w+\b", text)
 
     total_words = len(words)
-
     unique_words = len(set(words))
 
-    # --------------------------------------------------
+    # --------------------------------
     # Lexical Diversity
-    # --------------------------------------------------
+    # --------------------------------
 
     ttr = unique_words / max(total_words, 1)
 
-    # --------------------------------------------------
+    # --------------------------------
     # Curiosity detection
-    # --------------------------------------------------
+    # --------------------------------
 
     curiosity = 0
 
@@ -65,70 +67,58 @@ def extract_signals(messages):
 
     curiosity_ratio = curiosity / max(turns, 1)
 
-    # --------------------------------------------------
+    # --------------------------------
     # Sequencing detection
-    # --------------------------------------------------
+    # --------------------------------
 
-    sequencing = sum(
-        1 for w in words if w in SEQUENCE_WORDS
-    )
+    sequencing = sum(1 for w in words if w in SEQUENCE_WORDS)
 
-    # --------------------------------------------------
+    # --------------------------------
     # Vocabulary novelty
-    # --------------------------------------------------
+    # --------------------------------
 
     word_freq = Counter(words)
 
-    new_words = len(
-        [w for w, c in word_freq.items() if c == 1]
-    )
+    new_words = len([w for w, c in word_freq.items() if c == 1])
 
     novelty_ratio = new_words / max(unique_words, 1)
 
-    # --------------------------------------------------
-    # Repetition detection (disfluency)
-    # --------------------------------------------------
+    # --------------------------------
+    # Repetition detection
+    # --------------------------------
 
-    repeated_words = sum(
-        c for c in word_freq.values() if c > 2
-    )
+    repeated_words = sum(c for c in word_freq.values() if c > 2)
 
     repetition_rate = repeated_words / max(total_words, 1)
 
-    # --------------------------------------------------
-    # Filler detection (disfluency)
-    # --------------------------------------------------
+    # --------------------------------
+    # Filler detection
+    # --------------------------------
 
-    filler_count = sum(
-        1 for w in words if w in FILLER_WORDS
-    )
+    filler_count = sum(1 for w in words if w in FILLER_WORDS)
 
     filler_ratio = filler_count / max(total_words, 1)
 
-    # --------------------------------------------------
+    # --------------------------------
     # Combined disfluency signal
-    # --------------------------------------------------
+    # --------------------------------
 
     disfluency_score = repetition_rate + filler_ratio
 
-    # --------------------------------------------------
+    # --------------------------------
     # Sentence lengths
-    # --------------------------------------------------
+    # --------------------------------
 
-    sentence_lengths = [
-        len(msg.split()) for msg in user_msgs
-    ]
+    sentence_lengths = [len(msg.split()) for msg in user_msgs]
 
     if turns == 0:
 
         avg_turn_length = 0
-        avg_sentence_length = 0
         sentence_variance = 0
 
     else:
 
         avg_turn_length = total_words / turns
-        avg_sentence_length = avg_turn_length
 
         mean_len = avg_turn_length
 
@@ -136,25 +126,23 @@ def extract_signals(messages):
             (l - mean_len) ** 2 for l in sentence_lengths
         ) / max(turns, 1)
 
-    # --------------------------------------------------
-    # Long turn ratio (expressive speech)
-    # --------------------------------------------------
+    # --------------------------------
+    # Long expressive turns
+    # --------------------------------
 
-    long_turns = sum(
-        1 for l in sentence_lengths if l >= 8
-    )
+    long_turns = sum(1 for l in sentence_lengths if l >= 8)
 
     long_turn_ratio = long_turns / max(turns, 1)
 
-    # --------------------------------------------------
-    # Topic coherence detection (NEW SIGNAL)
-    # --------------------------------------------------
+    # --------------------------------
+    # Topic consistency
+    # --------------------------------
 
     topic_switches = 0
 
     for i in range(1, len(user_msgs)):
 
-        prev_words = set(user_msgs[i-1].split())
+        prev_words = set(user_msgs[i - 1].split())
         curr_words = set(user_msgs[i].split())
 
         if len(prev_words.intersection(curr_words)) == 0:
@@ -162,18 +150,16 @@ def extract_signals(messages):
 
     topic_consistency = 1 - (topic_switches / max(turns - 1, 1))
 
-    # --------------------------------------------------
+    # --------------------------------
     # Topic detection
-    # --------------------------------------------------
+    # --------------------------------
 
     word_set = set(words)
 
     topic_scores = {}
 
     for topic, topic_words in TOPIC_MAP.items():
-        topic_scores[topic] = len(
-            word_set.intersection(topic_words)
-        )
+        topic_scores[topic] = len(word_set.intersection(topic_words))
 
     top_topics = sorted(
         topic_scores,
@@ -181,9 +167,9 @@ def extract_signals(messages):
         reverse=True
     )[:3]
 
-    # --------------------------------------------------
-    # Word Category Detection
-    # --------------------------------------------------
+    # --------------------------------
+    # Word category distribution
+    # --------------------------------
 
     noun_count = 0
     verb_count = 0
@@ -202,20 +188,16 @@ def extract_signals(messages):
 
     category_distribution = {
 
-        "noun": round(
-            (noun_count / max(total_words, 1)) * 100, 1
-        ),
+        "noun": round((noun_count / max(total_words, 1)) * 100, 1),
 
-        "verb": round(
-            (verb_count / max(total_words, 1)) * 100, 1
-        ),
+        "verb": round((verb_count / max(total_words, 1)) * 100, 1),
 
-        "social": round(
-            (social_count / max(total_words, 1)) * 100, 1
-        ),
+        "social": round((social_count / max(total_words, 1)) * 100, 1),
     }
 
-    # --------------------------------------------------
+    # --------------------------------
+    # Final signals
+    # --------------------------------
 
     return {
 
@@ -231,7 +213,7 @@ def extract_signals(messages):
 
         "sequencing": sequencing,
 
-        "novelty_ratio": novelty_ratio,
+        "novelty_ratio": round(novelty_ratio, 3),
 
         "repetition_rate": round(repetition_rate, 3),
 
@@ -239,9 +221,7 @@ def extract_signals(messages):
 
         "disfluency_score": round(disfluency_score, 3),
 
-        "avg_turn_length": avg_turn_length,
-
-        "avg_sentence_length": avg_sentence_length,
+        "avg_turn_length": round(avg_turn_length, 2),
 
         "sentence_variance": round(sentence_variance, 2),
 

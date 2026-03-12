@@ -4,7 +4,7 @@ def build_fq_ui(quotients, breakdown, signals, age):
     breakdown = breakdown or {}
     signals = signals or {}
 
-    fq = quotients.get("fq", 0)
+    fq = round(quotients.get("fq", 0), 1)
 
     turns = signals.get("turns", 0)
     total_words = signals.get("total_words", 0)
@@ -17,16 +17,13 @@ def build_fq_ui(quotients, breakdown, signals, age):
     avg_turn = signals.get("avg_turn_length", 0)
 
     # -----------------------------------------
-    # Speech Density (words per turn)
+    # Speech Density
     # -----------------------------------------
 
-    if turns == 0:
-        speech_density = 0
-    else:
-        speech_density = round(total_words / turns, 1)
+    speech_density = round(avg_turn, 1) if turns > 0 else 0
 
     # -----------------------------------------
-    # Fluency Interpretation
+    # Fluency Level
     # -----------------------------------------
 
     if fq >= 70:
@@ -39,7 +36,7 @@ def build_fq_ui(quotients, breakdown, signals, age):
         fluency_level = "Encourage more conversational practice."
 
     # -----------------------------------------
-    # Vocabulary richness insight
+    # Vocabulary richness
     # -----------------------------------------
 
     if ttr > 0.45:
@@ -84,7 +81,7 @@ def build_fq_ui(quotients, breakdown, signals, age):
     }
 
     # -----------------------------------------
-    # Disfluency detection
+    # Disfluency
     # -----------------------------------------
 
     disfluency_block = {
@@ -97,7 +94,7 @@ def build_fq_ui(quotients, breakdown, signals, age):
     }
 
     # -----------------------------------------
-    # Pace / Density
+    # Pace
     # -----------------------------------------
 
     if speech_density < 4:
@@ -113,7 +110,7 @@ def build_fq_ui(quotients, breakdown, signals, age):
     }
 
     # -----------------------------------------
-    # Weekly action
+    # Weekly recommendation
     # -----------------------------------------
 
     if long_turn_ratio > 0.4:

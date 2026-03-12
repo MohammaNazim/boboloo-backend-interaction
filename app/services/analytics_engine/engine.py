@@ -77,20 +77,27 @@ def generate_analytics(
     # --------------------------------
 
     signal_summary = {
+
+        # conversation volume
         "turns": signals.get("turns", 0),
         "total_words": signals.get("total_words", 0),
         "unique_words": signals.get("unique_words", 0),
 
+        # fluency structure
         "avg_turn_length": signals.get("avg_turn_length", 0),
         "sentence_variance": signals.get("sentence_variance", 0),
 
+        # vocabulary richness
+        "ttr": signals.get("ttr", 0),
+
+        # expressive conversation
+        "long_turn_ratio": signals.get("long_turn_ratio", 0),
+
+        # hesitation detection
+        "disfluency_score": signals.get("disfluency_score", 0),
+
         # curiosity
         "curiosity_ratio": signals.get("curiosity_ratio", 0),
-
-        # fluency signals
-        "ttr": signals.get("ttr", 0),
-        "disfluency_score": signals.get("disfluency_score", 0),
-        "long_turn_ratio": signals.get("long_turn_ratio", 0),
 
         # topics
         "top_topics": signals.get("top_topics", []),
