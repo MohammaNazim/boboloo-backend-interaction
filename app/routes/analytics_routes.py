@@ -127,6 +127,10 @@ async def gq_detail(
     else:
         start_date = now - timedelta(days=21)
 
+    # --------------------------------
+    # Fetch analytics history
+    # --------------------------------
+
     result = await db.execute(
         select(AnalyticsHistory)
         .where(
@@ -136,8 +140,8 @@ async def gq_detail(
         .order_by(AnalyticsHistory.created_at.asc())
     )
 
-    rows = list(reversed(result.scalars().all()))
-    
+    rows = result.scalars().all()
+
     history = []
 
     for r in rows:
@@ -160,17 +164,31 @@ async def gq_detail(
             "whole_child_map": whole_child_map
         })
 
+    # --------------------------------
+    # Get previous GQ from history
+    # --------------------------------
+
+    previous_gq = None
+
+    if len(rows) >= 2:
+        previous_gq = rows[-2].gq
+
+    # --------------------------------
+    # Build UI response
+    # --------------------------------
+
     response = build_gq_ui(
         quotients={
             "fq": analytics.fq or 0,
             "vq": analytics.vq or 0,
             "cq": analytics.cq or 0,
             "mq": analytics.mq or 0,
-            "gq": analytics.gq or 0 ,
+            "gq": analytics.gq or 0,
         },
         signals=signals,
         age=child.age,
-        history=history
+        history=history,
+        previous_gq=previous_gq,
     )
 
     response["period"] = period

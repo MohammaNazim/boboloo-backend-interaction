@@ -1,6 +1,6 @@
 # app/services/analytics_engine/presenter/gq_presenter.py
 
-def build_gq_ui(quotients, signals, age, history=None):
+def build_gq_ui(quotients, signals, age, history=None, previous_gq=None):
 
     quotients = quotients or {}
     signals = signals or {}
@@ -57,22 +57,20 @@ def build_gq_ui(quotients, signals, age, history=None):
         milestone_pacing = "Additional guided interaction recommended."
 
     # -------------------------------
-    # Velocity
+    # Velocity (FIXED)
     # -------------------------------
 
-    previous_gq = signals.get("previous_gq")
-
-    previous_growth_rate = None
+    previous_growth_rate = previous_gq
     growth_rate = 0
     label = "Stable Growth"
 
     if previous_gq is not None:
 
         growth_rate = round(gq - previous_gq, 2)
-        previous_growth_rate = previous_gq
 
         if growth_rate > 3:
             label = "Learning Spurt"
+
         elif growth_rate < -3:
             label = "Temporary Dip"
 
@@ -122,5 +120,5 @@ def build_gq_ui(quotients, signals, age, history=None):
         "milestone_pacing": milestone_pacing,
         "velocity": velocity,
         "learning_profile": learning_profile,
-        "history": history,  # graph data
+        "history": history,
     }
