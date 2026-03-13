@@ -29,3 +29,6 @@ openai==2.26.0
 
 # Vocabulary analysis
 wordfreq==3.0.3
+
+# Date handling
+python-dateutil==2.9.0
