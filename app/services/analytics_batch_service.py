@@ -18,6 +18,25 @@ from app.services.analytics_engine.velocity import classify_velocity
 
 
 # =====================================================
+# AGE CALCULATION (NEW)
+# =====================================================
+
+def calculate_age_years(birth_date):
+
+    if not birth_date:
+        return 0
+
+    today = date.today()
+
+    years = today.year - birth_date.year
+
+    if (today.month, today.day) < (birth_date.month, birth_date.day):
+        years -= 1
+
+    return years
+
+
+# =====================================================
 # UPDATE VOCABULARY MEMORY
 # =====================================================
 
@@ -57,7 +76,7 @@ async def update_vocabulary_memory(db, child_id, words):
 
 
 # =====================================================
-# REAL NOVELTY CALCULATION (NEW)
+# REAL NOVELTY CALCULATION
 # =====================================================
 
 async def compute_real_novelty(db, child_id):
@@ -98,6 +117,15 @@ async def process_child(child, now):
     async with AsyncSessionLocal() as db:
 
         try:
+
+            # ------------------------------------------
+            # Calculate REAL AGE (NEW)
+            # ------------------------------------------
+
+            age = child.age
+
+            if child.birth_date:
+                age = calculate_age_years(child.birth_date)
 
             # ------------------------------------------
             # Count today's messages
@@ -178,7 +206,7 @@ async def process_child(child, now):
 
             result = generate_analytics(
                 messages=formatted_messages,
-                age=child.age,
+                age=age,
                 previous_scores=previous_scores,
             )
 
@@ -204,7 +232,7 @@ async def process_child(child, now):
                 )
 
             # ------------------------------------------
-            # REAL NOVELTY RETENTION (NEW)
+            # REAL NOVELTY RETENTION
             # ------------------------------------------
 
             new_words, reused_words = await compute_real_novelty(

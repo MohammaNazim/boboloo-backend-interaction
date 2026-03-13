@@ -75,6 +75,7 @@ class Child(Base):
 
     name = Column(String, nullable=False)
     age = Column(Integer, nullable=False)
+    birth_date = Column(Date, nullable=True, index=True)
     guardian_name = Column(String)
 
     interests = Column(JSONB, nullable=False, default=lambda: [])

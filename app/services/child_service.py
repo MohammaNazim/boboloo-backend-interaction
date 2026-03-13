@@ -1,3 +1,6 @@
+from datetime import date
+from dateutil.relativedelta import relativedelta
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException
@@ -25,11 +28,13 @@ async def create_child(
             status_code=400,
             detail="Parent already has a child",
         )
+    birth_date = date.today() - relativedelta(years=child_data.age)
 
     child = Child(
         parent_id=parent.id,
         name=child_data.name,
         age=child_data.age,
+        birth_date=birth_date,
         guardian_name=child_data.guardian_name,
         interests=child_data.interests,
         onboarding_completed=True,
@@ -90,6 +95,7 @@ async def update_child(
 
     if data.age is not None:
         child.age = data.age
+        child.birth_date = date.today() - relativedelta(years=data.age)
 
     if data.guardian_name is not None:
         child.guardian_name = data.guardian_name

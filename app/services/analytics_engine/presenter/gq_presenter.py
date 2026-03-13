@@ -12,16 +12,22 @@ def build_gq_ui(quotients, signals, age, history=None, previous_gq=None):
     mq = quotients.get("mq", 0)
     gq = quotients.get("gq", 0)
 
+
     # -------------------------------
     # Whole Child Map (Radar)
     # -------------------------------
+
+    turns = signals.get("turns", 0)
+    unique_words = signals.get("unique_words", 0)
+
+    focus_score = min(100, (turns * 2) + (unique_words * 0.5))
 
     whole_child_map = {
         "logic": round(mq, 1),
         "language": round((fq + vq) / 2, 1),
         "creativity": round(cq * 0.85, 1),
         "empathy": round(cq * 0.65, 1),
-        "focus": round(mq * 1.05, 1),
+        "focus": round(focus_score, 1),
     }
 
     # -------------------------------
@@ -49,12 +55,19 @@ def build_gq_ui(quotients, signals, age, history=None, previous_gq=None):
     # Milestone pacing
     # -------------------------------
 
-    if gq >= 60:
-        milestone_pacing = "Tracking slightly ahead in language skills."
-    elif gq >= 45:
-        milestone_pacing = "Development progressing on track."
+    gap = developmental_age_months - current_age_months
+
+    if gap >= 2:
+        milestone_pacing = "Your child is progressing slightly ahead of expected milestones."
+
+    elif gap >= -1:
+        milestone_pacing = "Your child is developing steadily along expected milestones."
+
+    elif gap >= -3:
+            milestone_pacing = "Some guided interaction could help strengthen current skills."
+
     else:
-        milestone_pacing = "Additional guided interaction recommended."
+        milestone_pacing = "Additional guided interaction is recommended to support development."
 
     # -------------------------------
     # Velocity (algorithm unchanged)
@@ -154,13 +167,47 @@ def build_gq_ui(quotients, signals, age, history=None, previous_gq=None):
     }
 
     # -------------------------------
-    # Insight
+    # Whole Child Insight
     # -------------------------------
 
-    if cq > fq:
-        insight = "Your child leans towards Creativity and Empathy this month."
+    report_period = signals.get("report_period", "weekly")
+
+    if report_period == "daily":
+        time_context = "yesterday"
+    elif report_period == "weekly":
+        time_context = "this week"
+    elif report_period == "last_week":
+        time_context = "last week"
+    elif report_period == "monthly":
+        time_context = "this month"
+    elif report_period == "last_month":
+        time_context = "last month"
     else:
-        insight = "Your child shows strong structured learning this month."
+        time_context = "recently"
+
+    # detect top 2 skills
+    sorted_skills = sorted(
+        whole_child_map.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    top_skill = sorted_skills[0][0]
+    second_skill = sorted_skills[1][0]
+
+    # parent friendly labels
+    skill_labels = {
+        "logic": "Logical Thinking",
+        "language": "Language Skills",
+        "creativity": "Creativity",
+        "empathy": "Emotional Awareness",
+        "focus": "Attention & Focus",
+    }   
+
+    skill1 = skill_labels.get(top_skill, top_skill)
+    skill2 = skill_labels.get(second_skill, second_skill)
+
+    insight = f"Your child leaned toward {skill1} and {skill2} {time_context}."
 
     # -------------------------------
     # Final Response
