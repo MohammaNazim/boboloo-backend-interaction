@@ -240,8 +240,8 @@ async def process_child(child, now):
                 child.id,
             )
 
-            breakdown["new_words_introduced"] = new_words
-            breakdown["new_words_reused"] = reused_words
+            signals["new_words_introduced"] = new_words
+            signals["new_words_reused"] = reused_words
 
             # ------------------------------------------
             # Compute trend
