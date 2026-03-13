@@ -100,10 +100,23 @@ def build_gq_ui(quotients, signals, age, history=None, previous_gq=None):
     # Graph comparison text
     # -------------------------------
 
+    report_period = signals.get("report_period", "weekly")
+
     comparison_text = "Building baseline data"
 
     if previous_gq is not None:
-        comparison_text = f"{percent_change}% vs Yesterday"
+
+        if report_period == "daily":
+            comparison_text = f"{percent_change}% vs Yesterday"
+
+        elif report_period in ["weekly", "last_week"]:
+            comparison_text = f"{percent_change}% vs Last Week"
+
+        elif report_period in ["monthly", "last_month"]:
+            comparison_text = f"{percent_change}% vs Last Month"
+
+        else:
+            comparison_text = f"{percent_change}% change"
 
     # -------------------------------
     # Parent progress insight

@@ -1,6 +1,4 @@
 from fastapi import APIRouter, Depends
-from datetime import datetime, timedelta, date
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,25 +21,6 @@ router = APIRouter(
 
 
 # =====================================================
-# AGE CALCULATION
-# =====================================================
-
-def calculate_age_years(birth_date):
-
-    if not birth_date:
-        return 0
-
-    today = date.today()
-
-    years = today.year - birth_date.year
-
-    if (today.month, today.day) < (birth_date.month, birth_date.day):
-        years -= 1
-
-    return years
-
-
-# =====================================================
 # OVERVIEW
 # =====================================================
 
@@ -54,6 +33,10 @@ async def analytics_overview(
 
     breakdown = analytics.breakdown_json or {}
     signals = breakdown.get("signals", {})
+
+    # -----------------------------
+    # Find weakest metric
+    # -----------------------------
 
     scores = {
         "fq": analytics.fq,
@@ -76,9 +59,20 @@ async def analytics_overview(
         ("GENERAL DEVELOPMENT", "Play Learning Game"),
     )
 
+    # -----------------------------
+    # BOBOLOOP signals
+    # -----------------------------
+
     unique_words = signals.get("unique_words", 0)
 
-    play_quality_change = round(analytics.trend_percent or 0, 1)
+    play_quality_change = analytics.trend_percent or 0
+
+    # prevent negative UI values
+    play_quality_change = round(play_quality_change, 1)
+
+    # -----------------------------
+    # Response
+    # -----------------------------
 
     return {
 
@@ -95,7 +89,6 @@ async def analytics_overview(
         "velocity": analytics.velocity,
     }
 
-
 # =====================================================
 # GQ DETAIL
 # =====================================================
@@ -104,61 +97,54 @@ async def analytics_overview(
 async def gq_detail(
     data: dict = Depends(analytics_ready_guard),
     db: AsyncSession = Depends(get_db),
-    period: str = "3weeks",
+    period: str = "week",
 ):
 
     child = data["child"]
     analytics = data["analytics"]
 
-    age = calculate_age_years(child.birth_date)
-
     signals = (analytics.breakdown_json or {}).get("signals", {}).copy()
 
+    # -----------------------------
+    # Detect report period for insight
+    # -----------------------------
+
     if period == "day":
         signals["report_period"] = "daily"
+
     elif period == "week":
         signals["report_period"] = "weekly"
+
     elif period in ["2weeks", "3weeks"]:
         signals["report_period"] = "last_week"
+
     elif period == "month":
         signals["report_period"] = "monthly"
-    else:
-        signals["report_period"] = "daily"
 
-    now = datetime.utcnow()
-
-    if period == "day":
-        start_date = now - timedelta(days=1)
-    elif period == "week":
-        start_date = now - timedelta(days=7)
-    elif period == "2weeks":
-        start_date = now - timedelta(days=14)
-    elif period == "3weeks":
-        start_date = now - timedelta(days=21)
-    elif period == "month":
-        start_date = now - timedelta(days=30)
     else:
-        start_date = now - timedelta(days=21)
+        signals["report_period"] = "weekly"
+
+    # --------------------------------
+    # Fetch analytics history
+    # --------------------------------
 
     result = await db.execute(
         select(AnalyticsHistory)
-        .where(
-            AnalyticsHistory.child_id == child.id,
-            AnalyticsHistory.created_at >= start_date
-        )
+        .where(AnalyticsHistory.child_id == child.id)
         .order_by(AnalyticsHistory.created_at.asc())
     )
 
     rows = result.scalars().all()
 
     history = []
+    gq_values = []
 
     for r in rows:
 
-        fq = r.fq
-        vq = r.vq
-        cq = r.cq
-        mq = r.mq
+        fq = r.fq or 0
+        vq = r.vq or 0
+        cq = r.cq or 0
+        mq = r.mq or 0
 
         whole_child_map = {
             "logic": round(mq, 1),
@@ -173,10 +159,21 @@ async def gq_detail(
             "whole_child_map": whole_child_map
         })
 
+        if r.gq is not None:
+            gq_values.append(r.gq)
+
+    # --------------------------------
+    # Calculate previous GQ for trend insights
+    # --------------------------------
+
     previous_gq = None
 
-    if len(rows) >= 2:
-        previous_gq = rows[-2].gq
+    if len(gq_values) > 1:
+        previous_gq = sum(gq_values[:-1]) / len(gq_values[:-1])
+
+    # --------------------------------
+    # Build UI response
+    # --------------------------------
 
     response = build_gq_ui(
         quotients={
@@ -187,7 +184,7 @@ async def gq_detail(
             "gq": analytics.gq or 0,
         },
         signals=signals,
-        age=age,
+        age=child.age,
         history=history,
         previous_gq=previous_gq,
     )
@@ -195,6 +192,7 @@ async def gq_detail(
     response["period"] = period
 
     return response
+
 
 
 # =====================================================
@@ -209,18 +207,16 @@ async def fq_detail(
     child = data["child"]
     analytics = data["analytics"]
 
-    age = calculate_age_years(child.birth_date)
-
     breakdown = analytics.breakdown_json or {}
-    signals = breakdown.get("signals", {})
+
+    signals = (breakdown.get("signals") or {})
 
     return build_fq_ui(
         {"fq": analytics.fq},
         breakdown,
         signals,
-        age,
+        child.age,
     )
-
 
 # =====================================================
 # VQ DETAIL
