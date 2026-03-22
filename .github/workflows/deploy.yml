@@ -17,17 +17,29 @@ jobs:
         username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          cd /home/ubuntu/boboloo-backend-interaction
+            cd /home/ubuntu
 
-          git pull origin main
+            if [ ! -d "boboloo-backend-interaction" ]; then
+                git clone https://github.com/MohammaNazim/boboloo-backend-interaction.git
+            fi
 
-          sudo docker stop boboloo-backend || true
-          sudo docker rm boboloo-backend || true
+            cd boboloo-backend-interaction
 
-          sudo docker build -t boboloo-backend .
+            git fetch origin
+            git reset --hard origin/main
 
-          sudo docker run -d -p 8000:8080 \
-            --env-file .env \
-            --name boboloo-backend \
-            --restart always \
-            boboloo-backend
+            if [ ! -f ".env" ]; then
+                echo "❌ .env file missing"
+                exit 1
+            fi
+
+            sudo docker stop boboloo-backend || true
+            sudo docker rm boboloo-backend || true
+
+            sudo docker build --no-cache -t boboloo-backend .
+
+            sudo docker run -d -p 8000:8080 \
+                --env-file .env \
+                --name boboloo-backend \
+                --restart always \
+                boboloo-backend
