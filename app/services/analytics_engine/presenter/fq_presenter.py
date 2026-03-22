@@ -10,7 +10,7 @@ def build_fq_ui(quotients, breakdown, signals, age):
     total_words = signals.get("total_words", 0)
 
     ttr = signals.get("ttr", 0)
-    variance = signals.get("sentence_variance", 0)
+    prosody_score = signals.get("prosody_score", 0)
     disfluency = signals.get("disfluency_score", 0)
     long_turn_ratio = signals.get("long_turn_ratio", 0)
 
@@ -23,25 +23,25 @@ def build_fq_ui(quotients, breakdown, signals, age):
     speech_density = round(avg_turn, 1) if turns > 0 else 0
 
     # -----------------------------------------
-    # Fluency Level
+    # Fluency Level (SMOOTHED)
     # -----------------------------------------
 
-    if fq >= 70:
+    if fq >= 75:
         fluency_level = "Advanced conversational fluency detected."
-    elif fq >= 55:
-        fluency_level = "Healthy fluency development."
-    elif fq >= 40:
+    elif fq >= 60:
+        fluency_level = "Healthy and confident fluency development."
+    elif fq >= 45:
         fluency_level = "Fluency emerging with interaction."
     else:
         fluency_level = "Encourage more conversational practice."
 
     # -----------------------------------------
-    # Vocabulary richness
+    # Vocabulary richness (BALANCED)
     # -----------------------------------------
 
-    if ttr > 0.45:
-        vocab_label = "Rich vocabulary diversity."
-    elif ttr > 0.30:
+    if ttr > 0.5:
+        vocab_label = "Rich and varied vocabulary usage."
+    elif ttr > 0.35:
         vocab_label = "Balanced vocabulary usage."
     else:
         vocab_label = "Vocabulary range still expanding."
@@ -52,57 +52,63 @@ def build_fq_ui(quotients, breakdown, signals, age):
     }
 
     # -----------------------------------------
-    # Prosody / Rhythm
+    # Prosody / Rhythm (TUNED)
     # -----------------------------------------
 
-    if variance > 5:
-        prosody_label = "Dynamic sentence rhythm."
-    elif variance > 2:
+    if prosody_score > 0.7:
+        prosody_label = "Highly expressive speech rhythm."
+    elif prosody_score > 0.35:
         prosody_label = "Moderate sentence variation."
     else:
         prosody_label = "Speech rhythm still developing."
 
     prosody = {
-        "variation_score": round(variance, 2),
+        "variation_score": round(prosody_score, 2),
         "label": prosody_label,
     }
 
     # -----------------------------------------
-    # Expressive Speech
+    # Expressive Speech (IMPROVED)
     # -----------------------------------------
+
+    if long_turn_ratio > 0.5:
+        expressive_text = "Child frequently uses detailed and expressive sentences."
+    elif long_turn_ratio > 0.25:
+        expressive_text = "Child is beginning to form longer responses."
+    else:
+        expressive_text = "Conversation dominated by shorter responses."
 
     expressive = {
         "long_turn_ratio": round(long_turn_ratio, 2),
-        "interpretation": (
-            "Child frequently produces longer expressive sentences."
-            if long_turn_ratio > 0.4
-            else "Conversation dominated by shorter responses."
-        ),
+        "interpretation": expressive_text,
     }
 
     # -----------------------------------------
-    # Disfluency
+    # Disfluency (LESS HARSH)
     # -----------------------------------------
+
+    if disfluency < 0.04:
+        disfluency_text = "Smooth and fluent speech."
+    elif disfluency < 0.08:
+        disfluency_text = "Minor hesitation observed."
+    else:
+        disfluency_text = "Noticeable hesitation in speech."
 
     disfluency_block = {
         "disfluency_score": round(disfluency, 3),
-        "interpretation": (
-            "Minimal hesitation detected."
-            if disfluency < 0.05
-            else "Some conversational hesitation observed."
-        ),
+        "interpretation": disfluency_text,
     }
 
     # -----------------------------------------
-    # Pace
+    # Pace (MORE NATURAL)
     # -----------------------------------------
 
     if speech_density < 4:
-        pace_zone = "Short replies"
-    elif speech_density < 9:
+        pace_zone = "Short responses"
+    elif speech_density < 8:
         pace_zone = "Balanced conversation"
     else:
-        pace_zone = "Highly expressive dialogue"
+        pace_zone = "Expressive conversation"
 
     pace = {
         "words_per_turn": speech_density,
@@ -110,15 +116,15 @@ def build_fq_ui(quotients, breakdown, signals, age):
     }
 
     # -----------------------------------------
-    # Weekly recommendation
+    # Weekly recommendation (SMARTER)
     # -----------------------------------------
 
-    if long_turn_ratio > 0.4:
-        weekly_action = "Encourage storytelling and imaginative conversations."
-    elif ttr > 0.35:
-        weekly_action = "Ask open-ended questions to expand conversation."
+    if long_turn_ratio > 0.5:
+        weekly_action = "Encourage storytelling and imaginative play."
+    elif ttr > 0.4:
+        weekly_action = "Ask open-ended questions to deepen conversations."
     else:
-        weekly_action = "Encourage descriptive responses and longer sentences."
+        weekly_action = "Encourage longer and more descriptive responses."
 
     # -----------------------------------------
     # Final response

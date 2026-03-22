@@ -225,14 +225,84 @@ async def fq_detail(
 @router.get("/vq")
 async def vq_detail(
     data: dict = Depends(analytics_ready_guard),
+    db: AsyncSession = Depends(get_db),
 ):
 
+    child = data["child"]
     analytics = data["analytics"]
 
     data_json = analytics.breakdown_json or {}
 
     breakdown = data_json.get("breakdown", {})
-    signals = data_json.get("signals", {})
+    signals = data_json.get("signals", {}).copy()
+
+    # --------------------------------
+    # FETCH HISTORY (LAST 7 DAYS)
+    # --------------------------------
+
+    result = await db.execute(
+        select(AnalyticsHistory)
+        .where(AnalyticsHistory.child_id == child.id)
+        .order_by(AnalyticsHistory.analytics_date.asc())
+    )
+
+    rows = result.scalars().all()
+    rows = rows[-7:]  # default = week
+
+    # --------------------------------
+    # BUILD GRAPH
+    # --------------------------------
+
+    graph = [
+        {
+            "date": r.analytics_date.isoformat(),
+            "vq": r.vq or 0,
+        }
+        for r in rows
+    ] or []
+
+    # --------------------------------
+    # % CHANGE CALCULATION (REAL)
+    # --------------------------------
+
+    percent = 0
+    daily_changes = []
+
+    if len(graph) >= 2:
+
+        for i in range(1, len(graph)):
+            prev = graph[i - 1]["vq"]
+            curr = graph[i]["vq"]
+
+            if prev > 0:
+                change = ((curr - prev) / prev) * 100
+                daily_changes.append(change)
+
+    if daily_changes:
+        percent = round(sum(daily_changes) / len(daily_changes), 1)
+
+    percent = max(0, min(percent, 100))
+
+    # --------------------------------
+    # TEXT INSIGHT
+    # --------------------------------
+
+    if percent > 0:
+        text = f"Vocabulary growing at +{percent}%"
+    else:
+        text = "Vocabulary stable"
+
+    # --------------------------------
+    # INJECT INTO SIGNALS (VERY IMPORTANT)
+    # --------------------------------
+
+    signals["vq_graph"] = graph
+    signals["vq_percent_change"] = percent
+    signals["vq_insight_text"] = text
+
+    # --------------------------------
+    # FINAL RESPONSE
+    # --------------------------------
 
     return build_vq_ui(
         {"vq": analytics.vq},

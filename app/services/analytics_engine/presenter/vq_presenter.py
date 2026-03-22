@@ -1,26 +1,27 @@
 # =====================================================
-# VQ PRESENTER (PRODUCTION SAFE + UI READY)
+# VQ PRESENTER (FINAL PRODUCTION READY)
 # =====================================================
 
 def build_vq_ui(quotients, breakdown, signals):
 
-    # -------------------------------------------------
-    # SAFETY GUARDS
-    # -------------------------------------------------
-
     quotients = quotients or {}
     breakdown = breakdown or {}
     signals = signals or {}
+
+    # -----------------------------
+    # Core values
+    # -----------------------------
 
     vq = quotients.get("vq", 0)
 
     spoken = breakdown.get("spoken_words", 0)
     understood = breakdown.get("understood_words", 0)
 
-    categories = breakdown.get(
-        "category_distribution",
-        {"noun": 0, "verb": 0, "social": 0}
-    )
+    categories = breakdown.get("category_distribution") or {
+        "noun": 0,
+        "verb": 0,
+        "social": 0
+    }
 
     introduced = breakdown.get("new_words_introduced", 0)
     reused = breakdown.get("new_words_reused", 0)
@@ -32,17 +33,17 @@ def build_vq_ui(quotients, breakdown, signals):
 
     content_words = breakdown.get("content_word_count", 0)
 
-    # -------------------------------------------------
-    # Retention %
-    # -------------------------------------------------
+    # -----------------------------
+    # Retention % (SAFE)
+    # -----------------------------
 
-    retention = round((reused / max(introduced, 1)) * 100, 1)
+    retention = round((reused / introduced) * 100, 1) if introduced > 0 else 0
 
-    # -------------------------------------------------
-    # Expressive vs Receptive
-    # -------------------------------------------------
+    # -----------------------------
+    # Expressive vs Receptive (SAFE)
+    # -----------------------------
 
-    expressive_ratio = round(spoken / max(understood, 1), 2)
+    expressive_ratio = round(spoken / understood, 2) if understood > 0 else 0
 
     expressive = {
         "spoken_words": spoken,
@@ -50,84 +51,63 @@ def build_vq_ui(quotients, breakdown, signals):
         "ratio": expressive_ratio,
     }
 
-    # -------------------------------------------------
+    # -----------------------------
     # Doctor Insight
-    # -------------------------------------------------
+    # -----------------------------
 
     if understood > spoken * 2:
-        doctor_note = (
-            "Child understands many more words than they speak. "
-            "Expressive vocabulary may expand soon."
-        )
-
+        doctor_note = "Child understands more words than they speak. Expression growth expected."
     elif spoken > 40:
-        doctor_note = (
-            "Child demonstrates strong expressive vocabulary development."
-        )
-
+        doctor_note = "Strong expressive vocabulary development."
     else:
-        doctor_note = (
-            "Expressive vocabulary is developing steadily."
-        )
+        doctor_note = "Vocabulary is developing steadily."
 
-    # -------------------------------------------------
-    # Category Insight
-    # -------------------------------------------------
+    # -----------------------------
+    # Category Insight (SAFE)
+    # -----------------------------
 
     noun_usage = categories.get("noun", 0)
     verb_usage = categories.get("verb", 0)
     social_usage = categories.get("social", 0)
 
     if verb_usage < 15:
-        category_insight = (
-            "Encourage more action-based words (verbs) during play."
-        )
-
+        category_insight = "Encourage more action words (verbs)."
     elif noun_usage > 70:
-        category_insight = (
-            "Conversation relies heavily on nouns. Encourage more actions and interactions."
-        )
-
+        category_insight = "Heavy noun usage. Encourage actions."
     elif social_usage < 5:
-        category_insight = (
-            "Introduce more social interaction words like greetings or thanks."
-        )
-
+        category_insight = "Encourage social words like hello, thanks."
     else:
-        category_insight = (
-            "Vocabulary categories appear well balanced."
-        )
+        category_insight = "Vocabulary categories are well balanced."
 
-    # -------------------------------------------------
-    # Vocabulary Insights
-    # -------------------------------------------------
+    # -----------------------------
+    # Insights
+    # -----------------------------
 
-    if diversity > 60:
-        diversity_note = "High vocabulary diversity detected."
-    elif diversity > 40:
-        diversity_note = "Moderate vocabulary diversity."
-    else:
-        diversity_note = "Frequent repetition detected in vocabulary."
+    diversity_note = (
+        "High vocabulary diversity."
+        if diversity > 60 else
+        "Moderate vocabulary diversity."
+        if diversity > 40 else
+        "Repetition observed in vocabulary."
+    )
 
-    if difficulty > 2:
-        difficulty_note = "Child is experimenting with advanced vocabulary."
-    else:
-        difficulty_note = "Vocabulary level appropriate for age and conversation."
+    difficulty_note = (
+        "Using advanced vocabulary."
+        if difficulty > 2 else
+        "Vocabulary level appropriate."
+    )
 
-    # -------------------------------------------------
-    # Conversation Confidence Insight
-    # -------------------------------------------------
+    confidence_note = (
+        "Low confidence (less data)."
+        if confidence < 0.4 else
+        "Moderate confidence."
+        if confidence < 0.7 else
+        "High confidence analysis."
+    )
 
-    if confidence < 0.4:
-        confidence_note = "Conversation sample small. Score reliability low."
-    elif confidence < 0.7:
-        confidence_note = "Moderate conversation sample size."
-    else:
-        confidence_note = "High confidence conversation analysis."
-
-    # -------------------------------------------------
-    # Novelty Retention
-    # -------------------------------------------------
+    # -----------------------------
+    # Novelty
+    # -----------------------------
 
     novelty = {
         "new_words": introduced,
@@ -135,18 +115,31 @@ def build_vq_ui(quotients, breakdown, signals):
         "retention_rate": retention,
     }
 
-    # -------------------------------------------------
+    # -----------------------------
+    # GRAPH + % (SAFE)
+    # -----------------------------
+
+    graph_data = signals.get("vq_graph") or []
+    percent_change = signals.get("vq_percent_change", 0)
+    insight_text = signals.get("vq_insight_text", "")
+
+    # -----------------------------
     # FINAL RESPONSE
-    # -------------------------------------------------
+    # -----------------------------
 
     return {
 
         "vq_score": vq,
 
+        # GRAPH SECTION (UI USE करेगा)
+        "graph": {
+            "data": graph_data,
+            "percent_change": percent_change,
+            "insight_text": insight_text,
+        },
+
         # CARD 1
         "expressive_receptive": expressive,
-
-        # Insight under score
         "doctor_note": doctor_note,
 
         # CARD 2
@@ -156,24 +149,19 @@ def build_vq_ui(quotients, breakdown, signals):
         # CARD 3
         "novelty_retention": novelty,
 
-        # Additional metrics
+        # Metrics
         "vocabulary_metrics": {
-
             "content_words": content_words,
             "diversity_score": diversity,
             "difficulty_score": difficulty,
             "contextual_usage": contextual,
             "confidence": confidence,
-
         },
 
-        # App insight section
+        # Insights
         "insights": {
-
             "diversity": diversity_note,
             "difficulty": difficulty_note,
             "confidence": confidence_note,
-
         }
-
     }

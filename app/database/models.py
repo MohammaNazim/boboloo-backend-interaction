@@ -14,6 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Integer,
     Enum,
+    func,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
@@ -497,27 +498,14 @@ class ChildVocabularyMemory(Base):
         index=True,
     )
 
-    word = Column(String, nullable=False, index=True)
+    word = Column(String(64), nullable=False)
 
-    first_seen = Column(
-        Date,
-        nullable=False,
-        index=True,
-    )
+    first_seen = Column(Date, nullable=False, index=True)
+    last_seen = Column(Date, nullable=False, index=True)
 
-    last_seen = Column(
-        Date,
-        nullable=False,
-        index=True,
-    )
+    usage_count = Column(Integer, default=1, nullable=False)
 
-    usage_count = Column(
-        Integer,
-        default=1,
-        nullable=False,
-    )
-
-    child = relationship("Child")
+    child = relationship("Child", lazy="selectin")
 
     __table_args__ = (
         UniqueConstraint(
@@ -529,7 +517,13 @@ class ChildVocabularyMemory(Base):
 
 
 Index(
-    "idx_child_vocab_child_word",
+    "idx_child_vocab_child_word_lower",
     ChildVocabularyMemory.child_id,
-    ChildVocabularyMemory.word,
+    func.lower(ChildVocabularyMemory.word),
+)
+
+Index(
+    "idx_vocab_child_first_seen",
+    ChildVocabularyMemory.child_id,
+    ChildVocabularyMemory.first_seen,
 )

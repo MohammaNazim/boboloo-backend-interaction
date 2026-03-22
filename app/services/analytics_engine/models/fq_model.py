@@ -66,7 +66,7 @@ def compute_fq(signals, age):
 
     complexity_ratio = mlu / max(expected, 1)
 
-    complexity_score = min(100, complexity_ratio * 60)
+    complexity_score = min(100, complexity_ratio * 50)
 
     # --------------------------------
     # Component scores
@@ -78,14 +78,14 @@ def compute_fq(signals, age):
 
     engagement_score = min(100, turns * 3)
 
-    prosody_score = min(100, variance * 10)
-
+    prosody_raw = signals.get("prosody_score", 0)
+    prosody_score = min(100, prosody_raw * 80)
+    
     expressive_score = min(100, long_turn_ratio * 100)
 
     coherence_score = min(100, topic_consistency * 100)
 
-    disfluency_penalty = disfluency * 50
-
+    disfluency_penalty = min(30, disfluency * 40)
     # --------------------------------
     # Raw weighted score
     # --------------------------------
