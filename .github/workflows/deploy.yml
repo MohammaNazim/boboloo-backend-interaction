@@ -20,7 +20,7 @@ jobs:
             cd /home/ubuntu
 
             if [ ! -d "boboloo-backend-interaction" ]; then
-                git clone https://github.com/MohammaNazim/boboloo-backend-interaction.git
+                git clone https://github.com/MohammadNazim01/boboloo-backend-interaction.git
             fi
 
             cd boboloo-backend-interaction
