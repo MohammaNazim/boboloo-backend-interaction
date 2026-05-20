@@ -45,3 +45,8 @@ node_modules/
 
 # Docker
 docker-compose.yml
+
+# SSH Keys
+*.pem
+*.key
+
