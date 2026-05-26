@@ -31,6 +31,25 @@ class Settings(BaseSettings):
     # ===============================
     ENVIRONMENT: str = "development"
 
+    # ===============================
+    # FEATURE FLAGS
+    # ===============================
+    ENABLE_BOBOTV: bool = False
+
+    # ===============================
+    # AWS / S3 (BoboTV)
+    # ===============================
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
+    AWS_REGION: str = "us-east-1"
+    AWS_S3_BUCKET_BOBOTV: str | None = None
+
+    # Presigned URL lifetime in seconds (default 15 min)
+    BOBOTV_PRESIGNED_URL_EXPIRY: int = 900
+
+    # Max video upload size in MB
+    BOBOTV_MAX_UPLOAD_SIZE_MB: int = 500
+
     class Config:
         env_file = ".env"
         extra = "ignore"

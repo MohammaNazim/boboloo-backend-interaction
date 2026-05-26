@@ -457,6 +457,52 @@ class FirmwareRelease(Base):
 
 
 # =========================
+# BOBOTV VIDEO
+# =========================
+class BoboTVVideo(Base):
+    __tablename__ = "bobotv_videos"
+
+    id = UUID_PK()
+
+    title = Column(String(256), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+
+    # S3 object key, e.g. "bobotv/videos/<uuid>/<filename>"
+    s3_key = Column(String(1024), nullable=False)
+
+    # Bytes
+    file_size = Column(Integer, nullable=False)
+
+    # e.g. "video/mp4"
+    mime_type = Column(String(128), nullable=False)
+
+    # Soft-delete: hidden from listings but not removed from S3 immediately
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+
+    # Firebase UID of the admin who uploaded
+    uploaded_by = Column(String, nullable=False)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+        index=True,
+    )
+
+    updated_at = Column(
+        DateTime(timezone=True),
+        onupdate=datetime.utcnow,
+    )
+
+
+Index(
+    "idx_bobotv_active_created",
+    BoboTVVideo.is_active,
+    BoboTVVideo.created_at,
+)
+
+
+# =========================
 # GIN INDEXES
 # =========================
 Index(

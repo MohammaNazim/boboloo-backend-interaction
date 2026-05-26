@@ -27,6 +27,20 @@ app.middleware("http")(request_logging_middleware)
 app.include_router(router)
 app.include_router(admin_router)
 
+# ─────────────────────────────────────────────
+# BOBOTV — feature flag guard
+# Existing app is unaffected when ENABLE_BOBOTV=false
+# ─────────────────────────────────────────────
+if settings.ENABLE_BOBOTV:
+    try:
+        from app.routes.bobotv_routes import router as bobotv_router
+        app.include_router(bobotv_router)
+        logging.getLogger(__name__).info("BoboTV feature is ENABLED")
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger(__name__).error(
+            "BoboTV router failed to load — feature disabled: %s", exc
+        )
+
 
 @app.get("/")
 async def root():

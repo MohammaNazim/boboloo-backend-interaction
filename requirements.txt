@@ -35,3 +35,8 @@ nltk>=3.9
 
 # Date handling
 python-dateutil==2.9.0
+
+# BoboTV — async S3 streaming, MIME validation, multipart uploads
+aioboto3==13.4.0
+python-magic==0.4.27
+python-multipart==0.0.9
